@@ -118,7 +118,6 @@ def breakUpCurves(lineSegment):
 
                 #currentPath.append(individualSegmentCommandCollection[0][b])
 
-
         writeString = ''.join(individualSegmentCommandCollection[0])
 
         f = open("onlyCurves" + str(k) + ".txt", "w")
@@ -341,7 +340,7 @@ def breakIntoLines(segment):
     #I may need to check if it is a move command and do nothing...
 
     #for now I am just going to hardcode this but it is possible that I will make it dynamic in the future
-    numberOfSegments = 1
+    numberOfSegments = 20
     baseSegmentStep = 1 / (numberOfSegments)
     segmentStep = 1 / (numberOfSegments)
     k = 0
@@ -457,6 +456,7 @@ def graphPoints(numberOfFiles):
     
 def processDataPoints(numberOfFiles):
     lastAngle = 0
+    angleThreshold = 1e-5
 
     w = 0
     while w < numberOfFiles:
@@ -485,21 +485,39 @@ def processDataPoints(numberOfFiles):
             lineSegmentLength = getLineSegmentLength(currentX, currentY, nextX, nextY)
             angle = getDifferentialAngle(currentX, currentY, nextX, nextY)
 
-            # print(currentX)
-            # print(currentY)
-            print(lineSegmentLength)
-            print(angle - lastAngle)
-            # print(currentX)
-            # print(currentY)
-            # print(z)
-            # print(len(pointHolder - 1))
-            print()
+            # print(lineSegmentLength)
+            # print(angle - lastAngle)
+            # print()
 
+            differentialAngle = angle - lastAngle
+
+            if (differentialAngle < angleThreshold):
+                differentialAngle = 0.0
+
+            if (lineSegmentLength == 0):
+                z = z + 1
+                continue
+
+
+
+            # writes the commands to a command file
+
+            if (z == 0):
+                f = open("commands" + str(w) + ".txt", "w")
+            else:
+                f = open("commands" + str(w) + ".txt", "a")
+            f.write("length: ")
+            f.write(str(lineSegmentLength))
+            f.write("\n")
+            f.write("differential angle: ")
+            f.write(str(differentialAngle))
+            f.write("\n")
+
+            f.close()
+            
             lastAngle = angle
 
             z = z + 1
-            if (z == 6524):
-                print(z)
         w = w + 1
 
     return 777
@@ -516,11 +534,52 @@ def getDifferentialAngle(currentX, currentY, nextX, nextY):
     yLength = nextY - currentY
     xLength = nextX - currentX
 
-    differentialAngle = math.degrees(math.atan(yLength/xLength))
+    # deals with the divide by 0 issue that results from vertical lines( x movement == 0 )
+    if (xLength == 0):
+        if (yLength == 0):
+            differentialAngle = 0
+            return differentialAngle
+
+
+        if (nextY > currentY):
+            differentialAngle = 90
+        else:
+            differentialAngle = -90
+
+
+    else:
+        differentialAngle = math.degrees(math.atan(yLength / xLength))
 
     return differentialAngle
 
-def test():
+def test(numberOfFiles):
+    k = 0
+
+    while (k < numberOfFiles):
+        linesOnlySegment = []
+        linesOnlySegmentsArray = []
+        f = open("onlyCurves" + str(k) + ".txt", "r")
+
+        pathToFormString = f.readline()
+
+        f.close()
+
+        k = k + 1
+
+        currentPathObject = parse_path(pathToFormString)
+
+        stringTestObject = str(currentPathObject[0])
+
+        if "Move" in stringTestObject:
+            print("success")
+
+        for l in range(len(currentPathObject)-1):
+            # print(currentPathObject[l])
+            linesOnlySegment.append(breakIntoLines(currentPathObject[l+1]))
+
+        linesOnlySegmentsArray.append(linesOnlySegment)
+
+        print(linesOnlySegment)
 
 
     return 777
@@ -528,6 +587,9 @@ def test():
 
 def main():
 
+    numberOfFiles = 5
+
+    variable = test(numberOfFiles)
     # test()
     #below is the data parsing part of my program
     svg_file = importSVG()
@@ -543,7 +605,7 @@ def main():
     #the below code processes all of the data and outputs the file that is read through by the machine
     processDataPoints(numberOfFiles)
 
-    graphPoints(numberOfFiles)
+    # graphPoints(numberOfFiles)
 
     #I need to start processing the x and y points that I have..
     # 1) I need to find out the "inside" of the letter(which way the flange is supposed to bend)
